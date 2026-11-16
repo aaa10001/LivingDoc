@@ -1,0 +1,11 @@
+# 容器 / 生产环境额外依赖：把默认的 SQLite 换成 PostgreSQL。
+#
+# 为什么单独一个文件，而不是塞进 requirements.txt：
+#   本地开发与课程演示跑 SQLite，不需要 psycopg 与 libpq；
+#   把驱动作为可选依赖，Windows 上少一个编译失败的可能。
+#
+# 安装：
+#   pip install -r requirements-postgres.txt
+-r requirements.txt
+
+psycopg[binary]>=3.2,<4.0   # psycopg3；SQLAlchemy 的 URL 写成 postgresql+psycopg://

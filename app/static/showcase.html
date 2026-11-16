@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="LivingDoc 架构总览：把代码仓库的模块、变更与生成文档放在同一张图上。" />
+  <title>LivingDoc · 架构总览</title>
+  <link rel="stylesheet" href="./showcase.css" />
+</head>
+<body>
+  <div class="page-grain" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="./showcase.html" aria-label="LivingDoc 架构总览">
+      <span class="brand-mark">L</span>
+      <span class="brand-word">LivingDoc</span>
+      <span class="brand-sub">Atlas</span>
+    </a>
+    <nav class="topnav" aria-label="主导航">
+      <a class="active" href="./showcase.html">架构总览</a>
+      <a href="./index.html">文档评审</a>
+      <a id="repoNavLink" href="#" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+    <label class="project-picker">
+      <span>仓库</span>
+      <select id="projectSelect" aria-label="选择项目"></select>
+    </label>
+  </header>
+
+  <main class="shell" id="main">
+    <section class="hero reveal" id="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> Living architecture / 01</p>
+        <h1>让代码的结构，<br /><em>成为文档的骨架。</em></h1>
+        <p class="hero-lede">
+          LivingDoc 从每一次提交里提取模块、实体与调用关系，生成可评审、可追溯的活文档。
+          这里不是文件列表，而是仓库当前状态的<strong>一张剖面图</strong>。
+        </p>
+        <div class="hero-signals" id="heroSignals"></div>
+      </div>
+
+      <aside class="repo-card" aria-label="仓库信息">
+        <div class="repo-card-head">
+          <span class="label">Repository</span>
+          <span class="live-dot" id="repoLive"><i></i> connected</span>
+        </div>
+        <a class="repo-name" id="repoName" href="#" target="_blank" rel="noreferrer">—</a>
+        <div class="repo-grid">
+          <div><span>Branch</span><strong id="repoBranch">—</strong></div>
+          <div><span>Head</span><a id="repoCommit" href="#" target="_blank" rel="noreferrer">—</a></div>
+          <div><span>Docs</span><strong id="repoPath">—</strong></div>
+          <div><span>Last run</span><strong id="repoRun">—</strong></div>
+        </div>
+        <a class="repo-open" id="repoOpen" href="#" target="_blank" rel="noreferrer">
+          在 GitHub 打开仓库 <span aria-hidden="true">↗</span>
+        </a>
+      </aside>
+    </section>
+
+    <section class="metrics reveal" aria-label="仓库指标">
+      <div class="metric"><span class="metric-label">Documents</span><strong id="statDocs">—</strong><span class="metric-note">当前生效版本</span></div>
+      <div class="metric"><span class="metric-label">Modules</span><strong id="statModules">—</strong><span class="metric-note">由文档目标聚合</span></div>
+      <div class="metric"><span class="metric-label">Pending</span><strong id="statPending">—</strong><span class="metric-note">等待人工确认</span></div>
+      <div class="metric"><span class="metric-label">Tokens</span><strong id="statTokens">—</strong><span class="metric-note">最近 12 次运行</span></div>
+    </section>
+
+    <section class="section atlas reveal" aria-labelledby="atlasTitle">
+      <header class="section-head">
+        <div>
+          <p class="section-kicker">02 / Module atlas</p>
+          <h2 id="atlasTitle">模块图谱</h2>
+        </div>
+        <p class="section-note">按文档目标聚合，不臆造代码依赖。点击模块筛选下方文档。</p>
+      </header>
+      <div class="atlas-body">
+        <div class="repo-core" id="repoCore">
+          <span class="core-orbit" aria-hidden="true"></span>
+          <span class="core-label">Repository core</span>
+          <strong id="coreName">—</strong>
+          <span id="coreMeta">—</span>
+          <span class="core-status"><i></i><span id="coreStatus">ready</span></span>
+        </div>
+        <div class="module-grid" id="moduleGrid"></div>
+      </div>
+    </section>
+
+    <section class="section docs-section reveal" aria-labelledby="docsTitle">
+      <header class="section-head">
+        <div>
+          <p class="section-kicker">03 / Generated documents</p>
+          <h2 id="docsTitle">生成文档</h2>
+        </div>
+        <div class="doc-filters" id="docFilters" role="group" aria-label="文档类型筛选">
+          <button class="filter active" data-type="">全部</button>
+          <button class="filter" data-type="class_diagram">类图</button>
+          <button class="filter" data-type="sequence_diagram">时序图</button>
+          <button class="filter" data-type="api_doc">API</button>
+        </div>
+      </header>
+      <div class="module-filter" id="moduleFilter" hidden></div>
+      <div class="doc-grid" id="docGrid"></div>
+      <div class="empty-state" id="docsEmpty" hidden>
+        <span class="empty-mark">∅</span>
+        <h3>这个仓库还没有生成文档</h3>
+        <p>配置 Webhook 后触发一次 push，或先看文档评审页里的演示数据。</p>
+        <a class="text-link" href="./index.html">去文档评审 <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
+
+    <section class="section runs-section reveal" aria-labelledby="runsTitle">
+      <header class="section-head">
+        <div>
+          <p class="section-kicker">04 / Activity</p>
+          <h2 id="runsTitle">最近运行</h2>
+        </div>
+        <p class="section-note">从 Webhook 到投递的每一次呼吸。</p>
+      </header>
+      <ol class="run-list" id="runList"></ol>
+    </section>
+
+    <footer class="footer">
+      <span>LivingDoc · 活文档系统</span>
+      <span class="footer-line"></span>
+      <a href="./index.html">评审与人工闸门</a>
+      <a href="/api/v1/projects" target="_blank" rel="noreferrer">JSON API</a>
+    </footer>
+  </main>
+
+  <div class="loading-bar" id="loadingBar" hidden><span></span></div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+  <aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drawerTitle">
+    <header class="drawer-head">
+      <div>
+        <p class="section-kicker" id="drawerType">Document</p>
+        <h2 id="drawerTitle">文档</h2>
+      </div>
+      <button class="icon-button" id="drawerClose" aria-label="关闭">×</button>
+    </header>
+    <div class="drawer-meta" id="drawerMeta"></div>
+    <div class="drawer-actions" id="drawerActions"></div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <template id="skeletonModule">
+    <div class="module-card skeleton-card"><span class="skeleton-line short"></span><span class="skeleton-line"></span><span class="skeleton-line mid"></span></div>
+  </template>
+
+  <script src="./showcase.js" defer></script>
+</body>
+</html>

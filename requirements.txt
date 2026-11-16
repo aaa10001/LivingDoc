@@ -1,0 +1,48 @@
+# LivingDoc 后端依赖
+#
+# 安装：
+#   python -m venv .venv
+#   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+#
+# 网络慢可以加国内镜像：
+#   ... -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+#
+# 版本策略：用 ">=x,<y" 而不是死锁 "==x.y.z"。
+# 大作业要在别人的机器上跑得起来，锁太死反而会因 Python 版本不同装不上；
+# 真正的可复现性靠 requirements.lock.txt（pip freeze 生成，见文末说明）。
+
+# ---------- Web 层 ----------
+fastapi>=0.115,<1.0          # HTTP 框架；异步 + 自动 OpenAPI 文档
+uvicorn[standard]>=0.30,<1.0 # ASGI 服务器；[standard] 带 httptools/websockets
+pydantic>=2.7,<3.0           # 数据校验（FastAPI 的底层）
+pydantic-settings>=2.3,<3.0  # 从环境变量/.env 读配置
+
+# ---------- 异步任务 ----------
+celery>=5.4,<6.0             # 任务队列客户端 + worker
+# broker/result backend 的两种实现：
+#   开发：sqla+sqlite:///... （SQLAlchemy 提供，无需 Redis，Windows 友好）
+#   生产：redis://localhost:6379/0
+SQLAlchemy>=2.0,<3.0
+redis>=5.0,<7.0              # 仅在使用 Redis broker 时需要；装了不影响 sqlite 方案
+
+# ---------- 工具 ----------
+httpx>=0.27,<1.0             # 调用 GitHub API / 发测试 webhook
+python-dotenv>=1.0,<2.0      # 单独跑脚本时也能读 .env
+
+# ---------- 测试 ----------
+pytest>=8.0,<10.0
+
+# ---------- AST 解析（阶段三起为必需）----------
+# 版本说明：本机实测通过的是 0.26.0 / python 0.25.0 / java 0.23.5；
+# 上限放到下一大版本之前，避免 tree-sitter 的 ABI 小版本破坏 Windows wheel。
+tree-sitter>=0.24,<0.27
+tree-sitter-python>=0.23,<0.26
+tree-sitter-java>=0.23,<0.24
+
+# ---------- 生产部署（容器里用 requirements-postgres.txt 自动带上）----------
+# alembic>=1.13,<2.0         # 迁移工具，当前用 metadata.create_all 建表
+# psutil>=6.0                # tree-sitter 子进程超时强杀
+# jinja2>=3.1,<4.0           # Prompt 模板渲染
+#
+# 生成锁文件（装完之后执行，把输出重定向到 requirements.lock.txt）：
+#   pip freeze > requirements.lock.txt

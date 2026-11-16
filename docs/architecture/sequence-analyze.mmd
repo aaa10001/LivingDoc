@@ -1,0 +1,48 @@
+sequenceDiagram
+    autonumber
+    participant GH as Git 平台
+    participant API as FastAPI 接入层
+    participant DB as PostgreSQL
+    participant Q as Broker
+    participant W as Celery Worker
+    participant GIT as 仓库缓存
+    participant TS as Tree-sitter
+    participant LLM as 大模型
+    participant KB as 知识库
+
+    GH->>API: POST /webhooks/github
+    Note over API: 用 webhook_secret 校验 X-Hub-Signature-256
+    API->>DB: INSERT webhook_deliveries
+    alt dedupe_key 唯一键冲突（重复投递）
+        DB-->>API: UniqueViolation
+        API-->>GH: 200 duplicate（不重复分析）
+    else 首次投递
+        API->>DB: INSERT analysis_runs status = queued
+        API->>Q: enqueue run_id
+        API-->>GH: 202 Accepted
+        Q->>W: 投递任务
+        W->>DB: status = cloning
+        W->>GIT: fetch base_sha 与 head_sha
+        W->>GIT: git diff base..head
+        W->>DB: 写 changed_files
+        W->>DB: status = parsing
+        W->>GIT: 取变更后文件全文
+        W->>TS: 解析受影响函数的 AST
+        TS-->>W: entities 与 relations
+        W->>DB: upsert code_entities / entity_relations
+        W->>DB: 读受影响实体 + 一跳调用关系
+        W->>DB: status = analyzing
+        W->>LLM: chat system_prompt + context + json_schema
+        LLM-->>W: PlantUML / JSON
+        W->>DB: 写 ai_invocations
+        W->>W: plantuml -checkonly 编译校验
+        alt 编译或 schema 校验失败 且 已重试次数 < 2
+            W->>LLM: 回灌错误日志 请求修复
+            LLM-->>W: 修正后的 PlantUML
+            W->>W: 再次校验
+        end
+        W->>DB: 写 documents / document_revisions
+        W->>DB: status = rendering
+        W->>KB: 发布文档 + PR 评论
+        W->>DB: status = succeeded
+    end

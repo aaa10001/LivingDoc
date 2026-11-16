@@ -1,0 +1,54 @@
+flowchart LR
+    subgraph EXT["外部系统"]
+        GH["GitHub / Gitee"]
+        AI["DeepSeek-Coder · GLM-4"]
+        KB["知识库 / PR 评论"]
+    end
+
+    subgraph API["接入层 FastAPI"]
+        WH["POST /webhooks/:provider<br/>HMAC 验签"]
+        DEDUP["幂等去重<br/>dedupe_key 唯一索引"]
+        REST["REST API /api/v1"]
+    end
+
+    subgraph Q["队列层"]
+        BR["Broker<br/>sqla+sqlite 或 redis"]
+    end
+
+    subgraph WORKER["Worker 七阶段流水线"]
+        S1["1 clone / fetch"]
+        S2["2 diff"]
+        S3["3 Tree-sitter 解析"]
+        S4["4 上下文组装"]
+        S5["5 LLM 调用"]
+        S6["6 校验 + 渲染"]
+        S7["7 落库 + 发布"]
+    end
+
+    subgraph DATA["持久化"]
+        PG[("PostgreSQL")]
+        FS[("文件存储<br/>patch · svg · repo cache")]
+    end
+
+    GH -->|"webhook 事件"| WH
+    WH --> DEDUP
+    DEDUP -->|"首次投递"| BR
+    DEDUP -.->|"重复投递 直接 200"| GH
+    BR --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+    S5 --> S6
+    S6 -->|"编译失败 回灌重试 最多 2 次"| S5
+    S6 -->|"校验通过"| S7
+    S5 <-->|"prompt / 结构化输出"| AI
+    S7 --> KB
+    REST --> PG
+
+    S1 -.->|"克隆与对象缓存"| FS
+    S2 -.->|"写 changed_files"| PG
+    S3 -.->|"写 entities / relations"| PG
+    S4 -.->|"读实体与一跳关系"| PG
+    S5 -.->|"写 ai_invocations"| PG
+    S7 -.->|"写 documents / revisions"| PG

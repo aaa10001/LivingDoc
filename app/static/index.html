@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LivingDoc · 文档评审</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">LD</span>
+      <div>
+        <h1>LivingDoc <span class="thin">文档评审</span></h1>
+        <p class="sub" id="metaLine">正在连接…</p>
+      </div>
+    </div>
+    <nav class="topnav">
+      <a href="./showcase.html">架构总览</a>
+      <a href="/docs" target="_blank" rel="noreferrer">API 文档</a>
+      <a href="/api/v1/projects" target="_blank" rel="noreferrer">JSON</a>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <label class="field">
+        <span>项目</span>
+        <select id="projectSelect"></select>
+      </label>
+
+      <div class="filter-row">
+        <input id="searchInput" type="search" placeholder="搜索文档标题 / 模块…" autocomplete="off" />
+      </div>
+      <div class="filter-row tabs small" id="typeFilter">
+        <button class="chip active" data-type="">全部</button>
+        <button class="chip" data-type="class_diagram">类图</button>
+        <button class="chip" data-type="sequence_diagram">时序图</button>
+        <button class="chip" data-type="api_doc">API</button>
+      </div>
+
+      <div id="docList" class="doc-list"></div>
+      <p class="hint" id="sidebarHint"></p>
+    </aside>
+
+    <section class="stage" id="stage">
+      <div class="empty">
+        <h2>选择一份文档开始评审</h2>
+        <p>左侧列出仓库里已生成的类图、时序图与 API 文档。人工改过的文档会显示「已人改」，
+          AI 的新版本会停在「待确认候选」，需要你显式接受才会生效。</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>

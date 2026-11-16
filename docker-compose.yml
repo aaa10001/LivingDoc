@@ -1,0 +1,106 @@
+# LivingDoc 一键环境：API + Worker + Redis + PostgreSQL
+#
+#   docker compose up -d --build
+#   docker compose logs -f api worker
+#   docker compose down          # 保留数据卷
+#   docker compose down -v       # 连数据一起删
+#
+# 三个 ADR 在这里被真正验证：
+#   worker 用 --pool=prefork（ADR-001 的生产形态，Windows 上跑不了）
+#   broker 用 redis://（ADR-002，真正的 visibility timeout）
+#   api 镜像里有 JRE + plantuml（ADR-007，-checkonly 不再是纸上谈兵）
+
+name: livingdoc
+
+x-app-env: &app-env
+  # PostgreSQL 16：与 docs/architecture/database.md 的 DDL 同一形态
+  DATABASE_URL: postgresql+psycopg://livingdoc:livingdoc@postgres:5432/livingdoc
+  # broker 与 result backend 分库，避免任务消息与结果互相干扰
+  BROKER_URL: redis://redis:6379/0
+  RESULT_BACKEND: redis://redis:6379/1
+  GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-dev-secret-change-me}
+  GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com}
+  LLM_MODEL: ${LLM_MODEL:-deepseek-chat}
+  LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-180}
+  WORK_DIR: /app/var/work
+  REPO_CACHE_DIR: /app/var/repos
+  PLANTUML_JAR: /opt/plantuml/plantuml.jar
+  PIPELINE_ENABLED: "true"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: livingdoc
+      POSTGRES_PASSWORD: livingdoc
+      POSTGRES_DB: livingdoc
+      # 中文注释与文档标题需要 UTF-8；alpine 默认就是 UTF-8，这里显式写出来
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U livingdoc -d livingdoc"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    # noeviction：broker 数据被淘汰等于任务丢失，宁可写失败也不要静默丢消息
+    command: ["redis-server", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+    image: livingdoc:dev
+    init: true
+    environment: *app-env
+    ports:
+      - "8000:8000"
+    volumes:
+      - var-data:/app/var
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - python scripts/init_db.py && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers
+
+  worker:
+    build:
+      context: .
+    image: livingdoc:dev
+    init: true
+    environment: *app-env
+    # worker 不监听 HTTP：沿用镜像的 /healthz 探针会永远 unhealthy，这里显式关掉。
+    healthcheck:
+      disable: true
+    volumes:
+      - var-data:/app/var
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    # 注意这里的 --pool=prefork：Windows 上必须写 threads，Linux 上才敢用它。
+    # --max-tasks-per-child 在 prefork 下生效，用来兜住 tree-sitter 的内存泄漏风险。
+    command:
+      - sh
+      - -c
+      - python scripts/init_db.py && exec celery -A app.celery_app worker --pool=prefork --concurrency=4 -Q analysis --loglevel=info --max-tasks-per-child=50
+
+volumes:
+  pgdata:
+  var-data:

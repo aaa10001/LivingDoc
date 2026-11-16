@@ -1,0 +1,94 @@
+erDiagram
+    PROJECTS ||--o{ WEBHOOK_DELIVERIES : "接收"
+    PROJECTS ||--o{ ANALYSIS_RUNS : "拥有"
+    PROJECTS ||--o{ COMMITS : "包含"
+    PROJECTS ||--o{ CODE_ENTITIES : "提取"
+    PROJECTS ||--o{ ENTITY_RELATIONS : "记录"
+    PROJECTS ||--o{ DOCUMENTS : "产出"
+    WEBHOOK_DELIVERIES |o--o{ ANALYSIS_RUNS : "触发"
+    ANALYSIS_RUNS ||--o{ CHANGED_FILES : "产生"
+    ANALYSIS_RUNS ||--o{ AI_INVOCATIONS : "记录"
+    ANALYSIS_RUNS |o--o{ DOCUMENTS : "负责更新"
+    CODE_ENTITIES ||--o{ ENTITY_RELATIONS : "作为源"
+    CODE_ENTITIES ||--o{ ENTITY_RELATIONS : "作为目标"
+    DOCUMENTS ||--o{ DOCUMENT_REVISIONS : "版本化"
+    DOCUMENT_REVISIONS ||--o{ PUBLISH_RECORDS : "发布"
+    PROMPT_TEMPLATES ||--o{ AI_INVOCATIONS : "驱动"
+    AI_INVOCATIONS }o--o| DOCUMENTS : "生成"
+
+    PROJECTS {
+        uuid id PK
+        varchar slug UK
+        varchar provider
+        varchar repo_full_name
+        varchar default_branch
+        text webhook_secret_enc
+        jsonb settings
+        timestamptz last_run_at
+    }
+
+    WEBHOOK_DELIVERIES {
+        bigint id PK
+        uuid project_id FK
+        varchar delivery_id
+        varchar event_type
+        varchar after_sha
+        varchar dedupe_key UK
+        varchar status
+        jsonb payload
+    }
+
+    ANALYSIS_RUNS {
+        uuid id PK
+        uuid project_id FK
+        varchar trigger_type
+        varchar base_sha
+        varchar head_sha
+        varchar status
+        int tokens_in
+        int tokens_out
+        int entities_changed
+    }
+
+    CODE_ENTITIES {
+        bigint id PK
+        uuid project_id FK
+        varchar file_path
+        varchar qualified_name
+        varchar entity_type
+        varchar source_hash
+        int start_line
+        int end_line
+    }
+
+    DOCUMENTS {
+        uuid id PK
+        uuid project_id FK
+        varchar doc_type
+        varchar target_key
+        varchar content_format
+        varchar status
+        boolean manual_edited
+        bigint current_revision_id FK
+    }
+
+    DOCUMENT_REVISIONS {
+        bigint id PK
+        uuid document_id FK
+        int version
+        text content
+        boolean render_ok
+        varchar created_by
+    }
+
+    AI_INVOCATIONS {
+        bigint id PK
+        uuid run_id FK
+        varchar provider
+        varchar model
+        varchar prompt_hash
+        int prompt_tokens
+        int completion_tokens
+        int latency_ms
+        varchar status
+    }
